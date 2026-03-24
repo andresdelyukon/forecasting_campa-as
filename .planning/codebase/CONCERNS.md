@@ -1,22 +1,33 @@
 # CONCERNS
 
-## Deuda técnica
+## Crítico
 
-### Alta prioridad
-- **Sin tests** — no hay cobertura automática; errores en `src/` solo se detectan corriendo el notebook
-- **IDs de Google Sheets hardcodeados en `config/settings.py`** — deberían ir en variables de entorno (`.env`) para no exponerlos en el repo
-- **Listas de campañas estáticas** (`src/campaigns.py`) — si se agrega una campaña nueva en Sheets, hay que actualizar el código manualmente
+- **División por cero en métricas** — CTR, CPC, CPM, CPA se calculan sin validar denominadores en `src/metrics.py`; se mitiga con `replace([np.inf, -np.inf], np.nan)` pero puede silenciar errores reales
+- **IDs de Google Sheets en el repo** — `SHEET_ID_ALL_MEDIA` y `SHEET_ID_PRESUPUESTO_OPTIMIZADO` están en `config/settings.py` versionado; deberían ir en variables de entorno (`.env` + `.gitignore`)
+- **Sin validación de datos externos** — el DataFrame de Google Sheets se consume directamente sin verificar columnas esperadas, tipos, ni rangos de valores; errores de tipo fallan silenciosamente
+- **122 nombres de campaña hardcodeados** en `src/campaigns.py` sin verificación contra los datos reales; si una campaña se renombra en Sheets, filtra vacío sin advertencia
 
-### Media prioridad
-- **Inconsistencia de columnas** — el sheet usa `Clicks`/`Impresiones`/`Spend` (mayúsculas) y el código analítico usa `clicks`/`impressions`/`spend` (minúsculas); depende de qué sheet se cargue
-- **Funciones de métricas y visualización acopladas** — `analizar_roas_mensual`, `analizar_continuidad_campana` calculan y grafican en la misma función, difícil de reutilizar solo el cálculo
-- **Sin logs** — no hay forma de saber qué pasó en ejecuciones anteriores
+## Alta prioridad
 
-### Baja prioridad
-- **`changepoint_prior_scale=0.5` global** — un solo valor para todas las campañas; campañas con comportamiento muy distinto podrían necesitar valores diferentes
-- **Notebook con 78 celdas** — flujo largo y difícil de seguir; candidato a dividirse en notebooks más pequeños por fase (análisis, forecasting, reportes)
+- **Sin tests** — cero cobertura automática; errores en `src/` solo se detectan corriendo el notebook completo
+- **`changepoint_prior_scale` único para todas las campañas** — un solo valor en `config/settings.py` para +100 campañas con comportamientos muy distintos
+- **Inconsistencia de columnas** — el sheet usa `Clicks`/`Impresiones`/`Spend` (mayúsculas) y el código analítico usa `clicks`/`impressions`/`spend` (minúsculas); el comportamiento depende de qué sheet se cargue
+- **Sin logging estructurado** — solo `print()` statements; no hay forma de auditar ejecuciones pasadas o detectar regresiones
+
+## Media prioridad
+
+- **Funciones de cálculo y visualización acopladas** — `analizar_roas_mensual`, `analizar_continuidad_campana` calculan y grafican juntas; los `plt.show()` rompen ejecución en modo headless/batch
+- **Fechas hardcodeadas en celdas de análisis del notebook** — aunque los parámetros globales están en `config/settings.py`, varias celdas de ejemplo usan fechas literales
+- **Celdas del notebook con código muerto** — algunas celdas reemplazadas por comentarios de importación dejaron flujo redundante
+- **Sin type hints** en funciones de `src/`
 
 ## Seguridad
-- Los IDs de Google Sheets están en `config/settings.py` dentro del repo — no son credenciales pero identifican los sheets
-- El `.gitignore` excluye `*.json` (credenciales de servicio de Google), correcto
-- Los outputs del notebook deben limpiarse antes de cada commit (`jupyter nbconvert --clear-output`) para no exponer datos de clientes
+
+- Los outputs del notebook pueden contener datos de clientes — limpiar con `jupyter nbconvert --clear-output` antes de cada commit (el `.gitignore` no lo hace automáticamente)
+- `.gitignore` excluye `*.json` correctamente (credenciales de servicio de Google)
+
+## Áreas frágiles
+
+- Dependencia total de Google Sheets en runtime — sin fallback local
+- Listas de campañas en `src/campaigns.py` — acopladas al naming actual de Sheets
+- Interdependencia de celdas en el notebook — el orden de ejecución importa y no está documentado

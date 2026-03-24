@@ -1,0 +1,24 @@
+# Outputs del notebook (pueden contener datos de clientes)
+notebooks/.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Limpiar outputs antes de commitear:
+# jupyter nbconvert --clear-output --inplace notebooks/Forecasting_campañas.ipynb
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+
+# Credenciales y variables de entorno
+*.json
+!requirements*.txt
+.env*
+
+# macOS
+.DS_Store
